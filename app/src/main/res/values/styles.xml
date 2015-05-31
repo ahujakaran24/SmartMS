@@ -1,0 +1,13 @@
+<resources>
+
+    <style name="AppTheme" parent="@style/Theme.AppCompat.Light.DarkActionBar">
+
+        <item name="colorPrimary">#39697e</item>
+        <item name="colorPrimaryDark">#39697e</item>
+        <item name="colorAccent">#eaeeef</item>
+
+        <item name="android:navigationBarColor">#39697e</item>
+        <!--<item name="android:activatedBackgroundIndicator">@drawable/defbg</item>-->
+    </style>
+
+</resources>
