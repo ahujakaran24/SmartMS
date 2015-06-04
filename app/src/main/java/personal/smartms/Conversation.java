@@ -28,12 +28,10 @@ import android.widget.Toast;
 import com.github.brnunes.swipeablerecyclerview.SwipeableRecyclerViewTouchListener;
 
 import java.util.ArrayList;
-import java.util.Collections;
 
 import personal.smartms.Adapter.ConverseAdapter;
 import personal.smartms.Entity.Convo;
 import personal.smartms.Utils.Constants;
-import personal.smartms.Utils.CustomComparator;
 import personal.smartms.Utils.OutboxObserver;
 
 
@@ -115,15 +113,15 @@ public class Conversation extends ActionBarActivity {
         if(pb.isShown())
         pb.setVisibility(View.GONE);
         String[] selectionArgs = {number};
-        Uri uriSMSURI = Uri.parse("content://sms/inbox");
-        Uri uriSMSURI2 = Uri.parse("content://sms/sent");
+        Uri uriSMSURI = Uri.parse("content://sms");
+      //  Uri uriSMSURI2 = Uri.parse("content://sms/sent");
 
        // Cursor cursor = getContentResolver().query(uriSMSURI, null, "address = ?", selectionArgs, "date desc");
-        CursorLoader cursorLoader = new CursorLoader(this,uriSMSURI, null,"address = ?",selectionArgs, null);
-        CursorLoader cursorLoader2 = new CursorLoader(this,uriSMSURI2, null,"address = ?",selectionArgs, null);
+        CursorLoader cursorLoader = new CursorLoader(this,uriSMSURI, null,"address = ?",selectionArgs, "date asc");
+     //   CursorLoader cursorLoader2 = new CursorLoader(this,uriSMSURI2, null,"address = ?",selectionArgs, "date asc");
 
         Cursor cursor = cursorLoader.loadInBackground();
-        Cursor cursor2 = cursorLoader2.loadInBackground();
+      //  Cursor cursor2 = cursorLoader2.loadInBackground();
 
         getContentResolver().registerContentObserver(Uri.parse("content://sms/out"), true, (new OutboxObserver(new Handler(), Conversation.this)));
 
@@ -137,11 +135,13 @@ public class Conversation extends ActionBarActivity {
 
             cursor.moveToPosition(-1);
 
+            int i =0;
             while (cursor.moveToNext()) {
                 String address = cursor.getString(cursor.getColumnIndex("address"));
                 String body = cursor.getString(cursor.getColumnIndexOrThrow("body"));
                 String date = cursor.getString(cursor.getColumnIndexOrThrow("date"));
                 String id = cursor.getString(cursor.getColumnIndexOrThrow("_id"));
+                String type = cursor.getString(cursor.getColumnIndexOrThrow(Constants.TYPE));
 
                 //to fetch the contact name of the conversation
                 String contactName = address;
@@ -153,8 +153,14 @@ public class Conversation extends ActionBarActivity {
                     contactName = cs.getString(cs.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME));
                 }
 
-                tempValue = new Convo(contactName, body, date, "in",id);
-                text.add(tempValue);
+
+                if(type.equals(String.valueOf(Constants.MESSAGE_TYPE_INBOX)))
+                    tempValue = new Convo(contactName, body, date, "in",id);
+                else
+                    tempValue = new Convo(contactName, body, date, "out",id);
+
+                text.add(i,tempValue);
+                i++;
             }
 
 
@@ -169,36 +175,9 @@ public class Conversation extends ActionBarActivity {
 
         /*Query Sent sms*/
 
-        try{
-          /* if(!cursor.isFirst())
-               cursor.moveToFirst();*/
-            cursor2.moveToPosition(-1);
-            while (cursor2.moveToNext()) {
-              //  String address = cursor2.getString(cursor2.getColumnIndex("address"));
-                String body = cursor2.getString(cursor2.getColumnIndexOrThrow("body"));
-                String date = cursor2.getString(cursor2.getColumnIndexOrThrow("date"));
-                String id = cursor2.getString(cursor2.getColumnIndexOrThrow("_id"));
-
-                //to fetch the contact name of the conversation
-
-                tempValue = new Convo("Me", body, date, "out",id);
-                text.add(tempValue);
-
-            }
-        } catch(Exception ex) {
-            // Log the exception's message or whatever you like
-        } finally {
-            try {
-                if( cursor2 != null && !cursor2.isClosed() )
-                    cursor2.close();
-            } catch(Exception ex) {}
-        }
-
-
-
         /*Sort all sms based on date*/
 
-        Collections.sort(text, new CustomComparator());
+
 
         rv = (RecyclerView)findViewById(R.id.rv);
         LinearLayoutManager llm = new LinearLayoutManager(this);
@@ -226,7 +205,7 @@ public class Conversation extends ActionBarActivity {
                                     //Temporarily remove from view
                                     text.remove(text.size() - position - 1);
                                     //refresh the conversation
-                                    getSMS();
+                                    adapter.notifyDataSetChanged();
                                     //Refresh the inbox
                                     Conversation.haveSent=true;
                                 }
@@ -241,7 +220,7 @@ public class Conversation extends ActionBarActivity {
                                     //Temporarily remove from view
                                     text.remove(text.size() - position - 1);
                                     //refresh the conversation
-                                    getSMS();
+                                    adapter.notifyDataSetChanged();
                                     //Refresh the inbox
                                     Conversation.haveSent=true;
                                 }
@@ -260,8 +239,10 @@ public class Conversation extends ActionBarActivity {
     @Override
     public void onResume()
     {
-        text = new ArrayList<Convo>();
-        getSMS();
+        if(text==null) {
+            text = new ArrayList<Convo>();
+            getSMS();
+        }
         super.onResume();
     }
 

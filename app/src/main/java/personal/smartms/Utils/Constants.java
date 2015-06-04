@@ -41,7 +41,10 @@ public class Constants {
             if (cur.moveToFirst()) {
                 return true;
             }
-        } finally {
+        }catch (Exception e)
+            {
+
+            }finally {
             if (cur != null)
                 cur.close();
         }
@@ -54,16 +57,16 @@ public class Constants {
         Uri Nameuri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(address));
         Cursor cs= context.getContentResolver().query(Nameuri, new String[]{ContactsContract.PhoneLookup.DISPLAY_NAME}, ContactsContract.PhoneLookup.NUMBER+"='"+address+"'",null,null);
 
-        if(cs.getCount()>0)
-        {
-            cs.moveToFirst();
-            contactName = cs.getString(cs.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME));
-        }
-        else{
-            return address;
-        }
+        if(cs!=null) {
+            if (cs.getCount() > 0) {
+                cs.moveToFirst();
+                contactName = cs.getString(cs.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME));
+            } else {
 
+                return address;
+            }
+        }
+        if(cs!=null) cs.close();
         return contactName;
-
     }
 }

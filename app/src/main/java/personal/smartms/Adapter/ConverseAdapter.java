@@ -1,12 +1,14 @@
 package personal.smartms.Adapter;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -34,6 +36,7 @@ public class ConverseAdapter extends RecyclerView.Adapter<ConverseAdapter.Conver
         TextView date;
         ImageView out;
         ImageView in;
+        LinearLayout background;
 
         // ImageView personPhoto;
 
@@ -45,6 +48,7 @@ public class ConverseAdapter extends RecyclerView.Adapter<ConverseAdapter.Conver
             date = (TextView)itemView.findViewById(R.id.date);
             out = (ImageView)itemView.findViewById(R.id.imageView);
             in = (ImageView)itemView.findViewById(R.id.in);
+            background=(LinearLayout)itemView.findViewById(R.id.l1);
         }
     }
 
@@ -84,10 +88,12 @@ public class ConverseAdapter extends RecyclerView.Adapter<ConverseAdapter.Conver
         if(convos.get(convos.size()-i-1).getInorout().equals("in"))
         {
             convosViewHolder.in.setImageResource(R.drawable.in);
-
+            convosViewHolder.background.setBackgroundColor(Color.parseColor("#FFC285"));
         }
-        else
+        else {
             convosViewHolder.out.setImageResource(R.drawable.out);
+            convosViewHolder.background.setBackgroundColor(Color.parseColor("#D6EBFF"));
+        }
     }
 
     @Override

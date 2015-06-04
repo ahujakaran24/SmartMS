@@ -241,6 +241,7 @@ public class MainActivity extends ActionBarActivity implements ActivityFragmentI
             pb.setVisibility(View.GONE); //sho
 
 
+            if(mViewPager!=null&&swipeAdapter!=null)
             //Set fragment after cursor has data
             mViewPager.setAdapter(swipeAdapter);
 

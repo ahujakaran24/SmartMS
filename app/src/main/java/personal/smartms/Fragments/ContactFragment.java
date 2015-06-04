@@ -9,6 +9,7 @@ import android.provider.ContactsContract;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -90,31 +91,44 @@ public class ContactFragment extends Fragment {
         // Download Music File from Internet
         @Override
         protected Void doInBackground(Void... no) {
-
+            Cursor pCur = null;
             ContentResolver cr = getActivity().getContentResolver();
             Cursor cur = cr.query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
-            if (cur.getCount() > 0) {
-                while (cur.moveToNext()) {
-                    phone = null;
-                    String id = cur.getString(cur.getColumnIndex(ContactsContract.Contacts._ID));
-                    String name = cur.getString(cur.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
-                    image_uri = cur.getString(cur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_URI));
-                    if (Integer.parseInt(cur.getString(cur.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER))) > 0) {
-                        Cursor pCur = cr.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
-                                ContactsContract.CommonDataKinds.Phone.CONTACT_ID+ " = ?", new String[]{id}, null);
-                        while (pCur.moveToNext()) {
-                            phone = pCur.getString(pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+
+            try {
+                if (cur.getCount() > 0) {
+                    while (cur.moveToNext()) {
+                        phone = null;
+                        String id = cur.getString(cur.getColumnIndex(ContactsContract.Contacts._ID));
+                        String name = cur.getString(cur.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+                        image_uri = cur.getString(cur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_URI));
+                        if (Integer.parseInt(cur.getString(cur.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER))) > 0) {
+                            pCur = cr.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
+                                    ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?", new String[]{id}, null);
+                            while (pCur.moveToNext()) {
+                                phone = pCur.getString(pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+                            }
+
                         }
-                        pCur.close();
-                    }
-                   // cur.close();
-                    if(phone!=null) {
-                        temp = new Contact(name, image_uri, phone);
-                        contacts.add(temp);
+                        // cur.close();
+                        if (phone != null) {
+                            temp = new Contact(name, image_uri, phone);
+                            contacts.add(temp);
+                        }
                     }
                 }
+            }catch(Exception e)
+            {
+                Log.d("Exceptin in ContactFrag",e.toString());
             }
-            cur.close();
+            finally {
+                if(pCur!=null)
+                    pCur.close();
+                if(cur!=null)
+                cur.close();
+
+            }
+
             return null;
         }
 

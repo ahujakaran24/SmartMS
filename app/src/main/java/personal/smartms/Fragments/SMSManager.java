@@ -56,6 +56,7 @@ public class SMSManager extends Fragment implements UpdateSMSManager {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        SMSRegister();
     }
 
     @Override
@@ -140,26 +141,47 @@ public class SMSManager extends Fragment implements UpdateSMSManager {
 
                                     //Is the DEfault app
                                                 if (!Constants.contactExists(getActivity(), messages.get(numbers.get(numbers.size()-position-1)).getNumber())) {
-
                                                     /*Contact
                                                     * is not in phone
                                                     * so delete it*/
-
                                                     deleteSMSThread(getActivity(), messages.get(numbers.get(numbers.size()-position-1)).getMessage(), messages.get(numbers.get(numbers.size()-position-1)).getNumber());
                                                     messages.remove(numbers.get(numbers.size()-position-1));
                                                     numbers.remove(numbers.size()-position-1);
-                                                    update();
+                                                    adapter.notifyDataSetChanged();
                                                 } else {
                                                      /*Contact
                                                     * is in phone
-                                                    * so mark it*/
-                                                    //Mark as seen in db
-                                                    markMessageRead(getActivity(), messages.get(numbers.get(numbers.size()-position-1)).getNumber(), messages.get(numbers.get(numbers.size()-position-1)).getMessage());
-                                                    //Mark seen locally
-                                                    messages.get(numbers.get(numbers.size()-position-1)).setSeen();
-                                                    Toast.makeText(getActivity(), "Marked seen", Toast.LENGTH_LONG).show();
-                                                    update();
-
+                                                    * so mark it if read and delete if unread*/
+                                                    if((messages.get(numbers.get(numbers.size()-position-1)).getSeen()).equals("1"))
+                                                    {
+                                                        final int pos = position;
+                                                        new AlertDialog.Builder(getActivity())
+                                                                .setTitle("Delete SMS")
+                                                                .setMessage("SMS is already marked seen. Do you  want to delete this SMS instead?")
+                                                                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                                                                    public void onClick(DialogInterface dialog, int which) {
+                                                                        deleteSMSThread(getActivity(), messages.get(numbers.get(numbers.size()-pos-1)).getMessage(), messages.get(numbers.get(numbers.size()-pos-1)).getNumber());
+                                                                        messages.remove(numbers.get(numbers.size()-pos-1));
+                                                                        numbers.remove(numbers.size()-pos-1);
+                                                                        adapter.notifyDataSetChanged();
+                                                                    }
+                                                                })
+                                                                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                                                                    public void onClick(DialogInterface dialog, int which) {
+                                                                        // do nothing
+                                                                    }
+                                                                })
+                                                                .setIcon(android.R.drawable.ic_dialog_alert)
+                                                                .show();
+                                                        //Read
+                                                    }else {
+                                                        //Mark as seen in db
+                                                        markMessageRead(getActivity(), messages.get(numbers.get(numbers.size() - position - 1)).getNumber(), messages.get(numbers.get(numbers.size() - position - 1)).getMessage());
+                                                        //Mark seen locally
+                                                        messages.get(numbers.get(numbers.size() - position - 1)).setSeen();
+                                                        Toast.makeText(getActivity(), "Marked seen", Toast.LENGTH_LONG).show();
+                                                        adapter.notifyDataSetChanged();
+                                                    }
                                                 }
                                     }
                                 }
@@ -185,34 +207,6 @@ public class SMSManager extends Fragment implements UpdateSMSManager {
             update();
         }
 
-        //receive newmsg sms then..
-        IntentFilter filter = new IntentFilter();
-        filter.addAction("android.provider.Telephony.SMS_RECEIVED");
-
-        receiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                // TODO Auto-generated method stub
-                if (intent.getAction().equals("android.provider.Telephony.SMS_RECEIVED")) {
-                    //Refresh
-                    //Give native database  a second to update
-                    new Handler().postDelayed(
-                            new Runnable() {
-                                @Override
-                                public void run() {
-                                    if(mListener!=null) {
-                                        mListener.startFetchTask();
-                                        mListener.getInbox();
-                                        mListener.getNumbers();
-                                        update();
-                                    }
-                                }
-                            }, 4000
-                    );
-                }
-            }
-        };
-        getActivity().registerReceiver(receiver, filter);
     }
 
     @Override
@@ -231,14 +225,11 @@ public class SMSManager extends Fragment implements UpdateSMSManager {
 
     /*Cant delte sms from android 4.4 + if this app
     * is not default app*/
-
-
-
-
     public void deleteSMSThread(Context ctx, String message, String number) {
+        Cursor c=null;
         try {
             Uri uriSms = Uri.parse("content://sms");
-            Cursor c = ctx.getContentResolver().query(uriSms,
+            c = ctx.getContentResolver().query(uriSms,
                     new String[] { "_id", "thread_id", "address",
                             "person", "date", "body" }, null, null, null);
 
@@ -252,7 +243,7 @@ public class SMSManager extends Fragment implements UpdateSMSManager {
                     String date = c.getString(3);
                     if (message.equals(body) && address.equals(number)) {
                         int rows = ctx.getContentResolver().delete(Uri.parse("content://sms/conversations/" + threadId), null,null);
-                        Toast.makeText(ctx,"Message thread from "+address+ " Deleted",Toast.LENGTH_LONG).show();
+                        Toast.makeText(ctx,"Message thread from "+Constants.getContact(getActivity(),number)+ " Deleted",Toast.LENGTH_LONG).show();
                     }
                 } while (c.moveToNext());
             }
@@ -260,6 +251,9 @@ public class SMSManager extends Fragment implements UpdateSMSManager {
         } catch (Exception e) {
             if(e!=null)
                 Toast.makeText(ctx,e.toString(),Toast.LENGTH_LONG).show();
+        }finally{
+            if(c!=null)
+            c.close();
         }
     }
 
@@ -284,11 +278,42 @@ public class SMSManager extends Fragment implements UpdateSMSManager {
         {
             Log.e("Mark Read", "Error in Read: " + e.toString());
         }
+        finally {
+            if(cursor!=null)
+                cursor.close();
+        }
     }
 
+        public void SMSRegister()
+        {
 
+            //receive newmsg sms then..
+            IntentFilter filter = new IntentFilter();
+            filter.addAction("android.provider.Telephony.SMS_RECEIVED");
 
-
-
-
+            receiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    // TODO Auto-generated method stub
+                    if (intent.getAction().equals("android.provider.Telephony.SMS_RECEIVED")) {
+                        //Refresh
+                        //Give native database  a second to update
+                        new Handler().postDelayed(
+                                new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if(mListener!=null) {
+                                            mListener.startFetchTask();
+                                            mListener.getInbox();
+                                            mListener.getNumbers();
+                                            update();
+                                        }
+                                    }
+                                }, 4000
+                        );
+                    }
+                }
+            };
+            getActivity().registerReceiver(receiver, filter);
+        }
 }

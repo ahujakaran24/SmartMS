@@ -12,7 +12,6 @@ import android.provider.Telephony;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.util.Log;
-import android.widget.Toast;
 
 import personal.smartms.Utils.Constants;
 
@@ -25,7 +24,7 @@ public class IncomingSms extends BroadcastReceiver {
     final SmsManager sms = SmsManager.getDefault();
 
     @SuppressLint("NewApi")
-    public void onReceive(Context context, Intent intent) {
+    public void onReceive(final Context context, Intent intent) {
 
         // Retrieves a map of extended data from the intent.
         final Bundle bundle = intent.getExtras();
@@ -43,31 +42,40 @@ public class IncomingSms extends BroadcastReceiver {
 
                     currentMessage  = SmsMessage.createFromPdu((byte[]) pdusObj[i]);
 
-                    String phoneNumber = currentMessage.getDisplayOriginatingAddress();
+                    final String phoneNumber = currentMessage.getDisplayOriginatingAddress();
 
                     String message = currentMessage.getDisplayMessageBody();
+
+
+                    /*If app is default update SMS db and pop up*/
+
+                    final String myPackageName = context.getPackageName();
+                    if (Telephony.Sms.getDefaultSmsPackage(context).equals(myPackageName)) {
+                        if(currentMessage!=null)
+                        /*If its a default app*/
+                            putSmsToDatabase(contentResolver, currentMessage);
+
 
                    // Log.i("SmsReceiver", "senderNum: " + phoneNumber + "; message: " + message);
 
                     /*
                     * SmartMS+ turns shortforms like omg to Oh My God over here*/
 
+                    /*Pop up a dialog when message comes*/
 
-                    // Show Alert
-                    int duration = Toast.LENGTH_LONG;
-                    Toast toast = Toast.makeText(context,"senderNum: "+ phoneNumber + ", message: " + message, duration);
-                    toast.show();
+                        Intent intent2 = new Intent(context,PopUpActivity.class);
+                        intent2.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        Bundle bundle2 = new Bundle();
+                        bundle2.putString("number", phoneNumber);
+                        bundle2.putString("message", message);
+                        intent2.putExtra("myBundle",bundle2);
+                        context.startActivity(intent2);
+
+                    }  //End default app check
 
                 } // end for loop
 
-                final String myPackageName = context.getPackageName();
-                if (Telephony.Sms.getDefaultSmsPackage(context).equals(myPackageName)) {
 
-                    if(currentMessage!=null)
-                        /*If its a default app*/
-                    putSmsToDatabase(contentResolver, currentMessage);
-
-                }
             } // bundle is null
 
         } catch (Exception e) {

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id = "@+id/number"
+        android:text="Phone number"
+        android:layout_margin="20dp"
+        android:textSize="15sp"
+        android:textColor="#39697e"
+        android:gravity="center"
+        />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:id="@+id/body"
+        android:text="Some text"
+        android:lineSpacingExtra="2dp"
+        android:textSize="20sp"
+        android:layout_margin="10dp"/>
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="10dp">
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="reply"
+        android:padding="5dp"
+        android:id="@+id/reply"
+        android:background="@drawable/background_edittext"
+        android:layout_marginRight="50dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginLeft="20dp"
+
+        />
+
+    <ImageView
+        android:layout_width="50dp"
+        android:layout_alignParentRight="true"
+        android:layout_marginTop="20dp"
+        android:id="@+id/send"
+        android:layout_height="35dp"
+        android:src="@drawable/send"/>
+
+    </RelativeLayout>
+
+</LinearLayout>
