@@ -1,11 +1,16 @@
 package personal.smartms;
 
+import android.annotation.SuppressLint;
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.content.Context;
 import android.content.CursorLoader;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.ContactsContract;
+import android.provider.Telephony;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -20,11 +25,14 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.github.brnunes.swipeablerecyclerview.SwipeableRecyclerViewTouchListener;
+
 import java.util.ArrayList;
 import java.util.Collections;
 
 import personal.smartms.Adapter.ConverseAdapter;
 import personal.smartms.Entity.Convo;
+import personal.smartms.Utils.Constants;
 import personal.smartms.Utils.CustomComparator;
 import personal.smartms.Utils.OutboxObserver;
 
@@ -62,13 +70,29 @@ public class Conversation extends ActionBarActivity {
         getSMS();
 
         send.setOnClickListener(new View.OnClickListener() {
+            @SuppressLint("NewApi")
             @Override
             public void onClick(View view) {
                 if(!editText.getText().toString().equals("")) {
                     smsManager.sendTextMessage(number, null, editText.getText().toString(), null, null);
                     pb.setVisibility(View.VISIBLE);
-                    editText.setText("");
+
                     haveSent = true;
+
+                    /*This is a default app so
+                    * we will add it to
+                    * the database!*/
+                    final String myPackageName = getPackageName();
+                    if (Telephony.Sms.getDefaultSmsPackage(getApplicationContext()).equals(myPackageName))
+                    {
+                        ContentResolver contentResolver = getApplicationContext().getContentResolver();
+                        putSmsToDatabase(contentResolver,number,editText.getText().toString());
+
+
+                    }
+
+                    editText.setText("");
+
 
                     new Handler().postDelayed(
                             new Runnable() {
@@ -87,6 +111,7 @@ public class Conversation extends ActionBarActivity {
 
     public void getSMS()
     {
+        if(text!=null) text.clear();
         if(pb.isShown())
         pb.setVisibility(View.GONE);
         String[] selectionArgs = {number};
@@ -116,6 +141,7 @@ public class Conversation extends ActionBarActivity {
                 String address = cursor.getString(cursor.getColumnIndex("address"));
                 String body = cursor.getString(cursor.getColumnIndexOrThrow("body"));
                 String date = cursor.getString(cursor.getColumnIndexOrThrow("date"));
+                String id = cursor.getString(cursor.getColumnIndexOrThrow("_id"));
 
                 //to fetch the contact name of the conversation
                 String contactName = address;
@@ -127,7 +153,7 @@ public class Conversation extends ActionBarActivity {
                     contactName = cs.getString(cs.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME));
                 }
 
-                tempValue = new Convo(contactName, body, date, "in");
+                tempValue = new Convo(contactName, body, date, "in",id);
                 text.add(tempValue);
             }
 
@@ -151,10 +177,11 @@ public class Conversation extends ActionBarActivity {
               //  String address = cursor2.getString(cursor2.getColumnIndex("address"));
                 String body = cursor2.getString(cursor2.getColumnIndexOrThrow("body"));
                 String date = cursor2.getString(cursor2.getColumnIndexOrThrow("date"));
+                String id = cursor2.getString(cursor2.getColumnIndexOrThrow("_id"));
 
                 //to fetch the contact name of the conversation
 
-                tempValue = new Convo("Me", body, date, "out");
+                tempValue = new Convo("Me", body, date, "out",id);
                 text.add(tempValue);
 
             }
@@ -178,8 +205,49 @@ public class Conversation extends ActionBarActivity {
 
         llm.setReverseLayout(true);
         rv.setLayoutManager(llm);
-        ConverseAdapter adapter = new ConverseAdapter(text,this);
+         final ConverseAdapter adapter = new ConverseAdapter(text,this);
         rv.setAdapter(adapter);
+
+
+        SwipeableRecyclerViewTouchListener swipeTouchListenerConversation =
+                new SwipeableRecyclerViewTouchListener(rv,
+                        new SwipeableRecyclerViewTouchListener.SwipeListener() {
+                            @Override
+                            public boolean canSwipe(int position) {
+                                return true;
+                            }
+
+                            @Override
+                            public void onDismissedBySwipeLeft(RecyclerView recyclerView, int[] reverseSortedPositions) {
+                                for (int position : reverseSortedPositions) {
+
+                                    //Permanently remove from database
+                                    deleteIndvidualSMS(Conversation.this, text.get(text.size() - position - 1).getId());
+                                    //Temporarily remove from view
+                                    text.remove(text.size() - position - 1);
+                                    //refresh the conversation
+                                    getSMS();
+                                    //Refresh the inbox
+                                    Conversation.haveSent=true;
+                                }
+                            }
+
+                            @SuppressLint("NewApi") //Default 4.4+
+                            @Override
+                            public void onDismissedBySwipeRight(RecyclerView recyclerView, int[] reverseSortedPositions) {
+                                for (int position : reverseSortedPositions) {
+
+                                    deleteIndvidualSMS(Conversation.this, text.get(text.size() - position - 1).getId());
+                                    //Temporarily remove from view
+                                    text.remove(text.size() - position - 1);
+                                    //refresh the conversation
+                                    getSMS();
+                                    //Refresh the inbox
+                                    Conversation.haveSent=true;
+                                }
+                            }
+                        });
+        rv.addOnItemTouchListener(swipeTouchListenerConversation);
     }
 
     @Override
@@ -219,4 +287,32 @@ public class Conversation extends ActionBarActivity {
 
         return super.onOptionsItemSelected(item);
     }
+
+
+    public void deleteIndvidualSMS(Context ctx, String id) {
+        try {
+
+                        int rows = ctx.getContentResolver().delete(Uri.parse("content://sms/" + id), null, null);
+            Log.d("DLETED!","Deleted with return : " + String.valueOf(rows));
+
+
+        } catch (Exception e) {
+            Log.e("log>>>", e.toString());
+            Log.e("log>>>", e.getMessage());
+        }
+    }
+
+
+    private void putSmsToDatabase( ContentResolver contentResolver, String number, String message) {
+
+        // Create SMS row
+        ContentValues values = new ContentValues();
+        values.put(Constants.ADDRESS, number );
+        values.put( Constants.DATE, System.currentTimeMillis() );
+        values.put( Constants.TYPE, Constants.MESSAGE_TYPE_SENT );
+            values.put( Constants.BODY, message ); // May need sms.getMessageBody.toString()
+        // Push row into the SMS table
+        contentResolver.insert(Uri.parse("content://sms/sent"), values );
+    }
+
 }

@@ -3,11 +3,13 @@ package personal.smartms;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -27,9 +29,8 @@ import personal.smartms.Utils.SMSManageComparator;
 public class MainActivity extends ActionBarActivity implements ActivityFragmentInterface {
 
     private SwipeAdapter swipeAdapter;
-
     public static MyViewPager mViewPager;
-    private String bodyInbox[], numberInbox[], dateInbox[], seen[];
+    private String bodyInbox[], numberInbox[], dateInbox[], seen[], thread_id[];
      private ProgressBar pb;
     private HashMap<String,String> messages= new HashMap<String,String> ();
     private HashMap<String,Message> inbox = new HashMap<String,Message>();
@@ -41,6 +42,8 @@ public class MainActivity extends ActionBarActivity implements ActivityFragmentI
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        startFetchTask();
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -92,15 +95,19 @@ public class MainActivity extends ActionBarActivity implements ActivityFragmentI
         /*******Finished layout*/
 
         /******Start SMS storage access*/
-
-        accessStorageInbox();
-        //Set fragment after cursor has data
-        mViewPager.setAdapter(swipeAdapter);
         }
 
 
 
+
+    //Called from Activity or fragment
     @Override
+    public void startFetchTask(){
+        new FetchInbox().execute();
+    }
+
+
+    //Called in worker thread from asynctask
     public void accessStorageInbox(){
         Uri uri = Uri.parse("content://sms");
         Cursor c= getContentResolver().query(uri, null, null ,null,null);
@@ -109,6 +116,7 @@ public class MainActivity extends ActionBarActivity implements ActivityFragmentI
          numberInbox = new String[c.getCount()];
          dateInbox = new String[c.getCount()];
          seen  = new String[c.getCount()];
+        thread_id = new String[c.getCount()];
 
         /*Reverse parsing since latest sms is in the top of the table
         * and using HashMap with unique key as number
@@ -120,45 +128,36 @@ public class MainActivity extends ActionBarActivity implements ActivityFragmentI
                          numberInbox[i]=c.getString(c.getColumnIndexOrThrow("address")).toString();
                          dateInbox[i]=c.getString(c.getColumnIndexOrThrow("date")).toString();
                          seen[i] = c.getString(c.getColumnIndexOrThrow("read")).toString();
-
-                         //Messages is hashmap of number Key and body value (THis is to keeep one latest copy of message)
-                             messages.put(numberInbox[i], bodyInbox[i]);
+                         thread_id[i] = c.getString(c.getColumnIndexOrThrow("thread_id")).toString();
 
                          //Temporary object of this iteration
-                             tempValue = new Message(numberInbox[i],messages, dateInbox[i], seen[i]);
+                             tempValue = new Message(numberInbox[i],bodyInbox[i], dateInbox[i], seen[i], thread_id[i]);
 
+                        /* to avoid duplicate entries :
+                         +91000000(inbox) will be different
+                         from 00000(outbox) in key.
+
+                         If this app is used in a country where country code is more than 4 letters, and numbers
+                         get mixed up like +9123 - 55555 and 55555 then user might see
+                         dual entries.
+
+                         A risk taken for greater good ( converting  such numbers to contact list is expensive
+                         and can't gaurntee number will be in contacts!
+                         */
+                         if(numberInbox[i].length()>=10) {
+                             numberInbox[i] = numberInbox[i].substring(numberInbox[i].length()-4);
+                         }else{
+                             //Keep going
+                         }
                          //Final HashMap Key : Number, Value : temp Object
                              inbox.put(numberInbox[i], tempValue);
 
-                         //Final Key (Number) ArrayList
-                             /*if(!numbers.contains(numberInbox[i]))
-                                 numbers.add(numberInbox[i]);
-*/
                          c.moveToPrevious();
                          }
              }
          c.close();
 
-        /*Use a comparator to sort
-         via Date (We want latest
-          Message on top */
-        SMSManageComparator bvc =  new SMSManageComparator(inbox);
 
-        sorted_map = new TreeMap<String,Message>(bvc); //gotta <3 the Structured data
-
-        sorted_map.putAll(inbox); //Our newmsg hero
-
-        // inbox.clear(); //Go ahead gc
-
-       /* Store the sorted Keys
-         in an arraylist for easy
-         retrieval in adapter*/
-
-        for (String key: sorted_map.keySet()) {
-            numbers.add(key);   //The sidekick
-        }
-
-        pb.setVisibility(View.GONE); //sho
 
     }
 
@@ -190,6 +189,64 @@ public class MainActivity extends ActionBarActivity implements ActivityFragmentI
     @Override
     public ArrayList<String> getNumbers() {
         return numbers;
+    }
+
+    // Async Task Class
+    class FetchInbox extends AsyncTask<Void, Void, Void> {
+
+        // Show Progress bar before downloading Music
+        @Override
+        protected void onPreExecute() {
+
+        }
+
+        // Download Music File from Internet
+        @Override
+        protected Void doInBackground(Void... no) {
+
+            accessStorageInbox();
+
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void no) {
+
+            Log.d("Unsorted list", inbox.toString());
+
+        /*Use a comparator to sort
+         via Date (We want latest
+          Message on top */
+            SMSManageComparator bvc =  new SMSManageComparator(inbox);
+
+            sorted_map = new TreeMap<String,Message>(bvc); //gotta <3 the Structured data
+
+            sorted_map.putAll(inbox); //Our newmsg hero
+
+            Log.d("sorted list", sorted_map.toString());
+
+            // inbox.clear(); //Go ahead gc
+
+       /* Store the sorted Keys
+         in an arraylist for easy
+         retrieval in adapter*/
+
+            int j =0;
+
+            for (String key: sorted_map.keySet()) {
+                numbers.add(j,key);   //The sidekick
+                j++;
+            }
+            pb.setVisibility(View.GONE); //sho
+
+
+            //Set fragment after cursor has data
+            mViewPager.setAdapter(swipeAdapter);
+
+
+
+        }
     }
 
 }

@@ -2,15 +2,14 @@ package personal.smartms.Adapter;
 
 import android.content.Context;
 import android.content.Intent;
-import android.database.Cursor;
-import android.net.Uri;
-import android.provider.ContactsContract;
+import android.graphics.Color;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -19,6 +18,7 @@ import java.util.TreeMap;
 import personal.smartms.Conversation;
 import personal.smartms.Entity.Message;
 import personal.smartms.R;
+import personal.smartms.Utils.Constants;
 
 /**
  * Created by karan on 31/5/15.
@@ -42,6 +42,7 @@ public class InboxAdapter extends RecyclerView.Adapter<InboxAdapter.InboxViewHol
         TextView message;
         TextView date;
         ImageView newmsg;
+        LinearLayout background;
 
 
        // ImageView personPhoto;
@@ -53,6 +54,7 @@ public class InboxAdapter extends RecyclerView.Adapter<InboxAdapter.InboxViewHol
             message = (TextView)itemView.findViewById(R.id.message);
             date = (TextView)itemView.findViewById(R.id.date);
             newmsg = (ImageView)itemView.findViewById(R.id.newmsg);
+            background = (LinearLayout)itemView.findViewById(R.id.l1);
         }
     }
 
@@ -93,15 +95,25 @@ public class InboxAdapter extends RecyclerView.Adapter<InboxAdapter.InboxViewHol
     public void onBindViewHolder(InboxViewHolder inboxViewHolder, int i) {
 
         //HashMap.get ( key-->Arraylist.get(size - pos -1)). getter();
-        if(inboxViewHolder!=null) {
-            inboxViewHolder.number.setText(getContact(messages.get(numbers.get(messages.size() - i - 1)).getNumber()));
+        if(inboxViewHolder!=null&&messages.get(numbers.get(messages.size() - i - 1))!=null) {
+            inboxViewHolder.number.setText(Constants.getContact(context, messages.get(numbers.get(messages.size() - i - 1)).getNumber()));
             inboxViewHolder.message.setText(messages.get(numbers.get(messages.size() - i - 1)).getMessage());
             inboxViewHolder.date.setText(messages.get(numbers.get(messages.size() - i - 1)).getDate().toString().substring(0, 16));
 
+            /*Mark it if its unread*/
             if ((messages.get(numbers.get(messages.size() - i - 1)).getSeen().equals("0")))
                 inboxViewHolder.newmsg.setVisibility(View.VISIBLE);
             else
                 inboxViewHolder.newmsg.setVisibility(View.GONE);
+
+            /*Color it if its from a contact*/
+            if(Constants.contactExists(context,messages.get(numbers.get(messages.size() - i - 1)).getNumber()))
+            {
+                inboxViewHolder.background.setBackgroundColor(Color.parseColor("#A4C639"));
+            }else{
+                inboxViewHolder.background.setBackgroundColor(Color.parseColor("#FBCEB1"));
+            }
+
         }
     }
 
@@ -110,19 +122,5 @@ public class InboxAdapter extends RecyclerView.Adapter<InboxAdapter.InboxViewHol
         super.onAttachedToRecyclerView(recyclerView);
     }
 
-    public String getContact(String address){
-        //to fetch the contact name of the conversation
-        String contactName = address;
-        Uri Nameuri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(address));
-        Cursor cs= context.getContentResolver().query(Nameuri, new String[]{ContactsContract.PhoneLookup.DISPLAY_NAME}, ContactsContract.PhoneLookup.NUMBER+"='"+address+"'",null,null);
 
-        if(cs.getCount()>0)
-        {
-            cs.moveToFirst();
-            contactName = cs.getString(cs.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME));
-        }
-
-        return contactName;
-
-    }
 }

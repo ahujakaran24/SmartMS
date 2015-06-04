@@ -7,15 +7,20 @@ import java.util.Date;
  */
 public class Convo {
 
-    String number,  body,  date,  inorout;
+    String number,  body,  date,  inorout, id;
 
-    public Convo(String number, String body, String date, String inorout)
+    public Convo(String number, String body, String date, String inorout, String id)
     {
         this.number = number;
         this.body = body;
         this.date = date;
         this.inorout = inorout;
+        this.id=id;
 
+    }
+
+    public String getId() {
+        return id;
     }
 
     public String getNumber() {

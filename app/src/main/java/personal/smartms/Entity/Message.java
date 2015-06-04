@@ -10,18 +10,30 @@ public class Message {
     String Number;
     String seen;
     String Date;
-    HashMap<String,String> message;
+    String ThreadId;
+    String message;
 
-    public Message( String Number, HashMap<String,String> message, String Date, String seen)
+    public Message( String Number, String message, String Date, String seen, String ThreadId)
     {
         this.message  = message;
         this.Number = Number;
         this.Date = Date;
         this.seen = seen;
+        this.ThreadId = ThreadId;
+    }
+
+    //Temp set seen when marking read in datbase. Dont wanna load the whole content again
+    public void setSeen()
+    {
+        seen ="1";
     }
 
     public String getMessage() {
-        return message.get(Number);
+        return message;
+    }
+
+    public String getThreadId() {
+        return ThreadId;
     }
 
     public String getNumber() {

@@ -43,6 +43,7 @@ public class ContactFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+
         new FetchContacts().execute();
 
      }
@@ -132,7 +133,6 @@ public class ContactFragment extends Fragment {
 
         }
     }
-
 
 
 }
